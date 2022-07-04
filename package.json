@@ -1,0 +1,11 @@
+{
+  "name": "geo-cgnn",
+  "version": "1.0.0",
+  "description": "\u001b[Bcopy from geo_cgnn",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "wzy",
+  "license": "ISC"
+}
