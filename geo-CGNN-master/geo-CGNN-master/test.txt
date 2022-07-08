@@ -1,0 +1,11 @@
+python process_geo_CGNN_Kfold.py --n_hidden_feat 192 --n_GCN_feat 192 --cutoff 8 --max_nei 12 --n_MLP_LR 4 --num_epochs 300 --batch_size 30 --target_name TC --milestones 250 --gamma 0.1 --datafile_name my_graph_data_thermal_conductivity_MP_8_12_100_000 --database Tc --n_grid_K 4 --n_Gaussian 64 --N_block 5 --lr 1e-2 --seed 12  --TL --model_name model_density.pth --weight_decay 1e-4
+mae: 0.183
+r2:0.93
+---------------
+python process_geo_CGNN_Kfold.py --n_hidden_feat 192 --n_GCN_feat 192 --cutoff 8 --max_nei 12 --n_MLP_LR 4 --num_epochs 300 --batch_size 30 --target_name TC --milestones 250 --gamma 0.1 --datafile_name my_graph_data_thermal_conductivity_MP_8_12_100_000 --database Tc --n_grid_K 4 --n_Gaussian 64 --N_block 5 --lr 1e-2 --seed 12 --weight_decay 1e-4
+mae:0.236
+r2:0.88
+---------------
+python process_geo_CGNN_Kfold.py --n_hidden_feat 192 --n_GCN_feat 192 --cutoff 8 --max_nei 12 --n_MLP_LR 4 --num_epochs 300 --batch_size 30 --target_name TC --milestones 250 --gamma 0.1 --datafile_name my_graph_data_thermal_conductivity_MP_8_12_100_000 --database Tc --n_grid_K 4 --n_Gaussian 64 --N_block 5 --lr 1e-2 --seed 12  --TL --model_name model_ebg.pth --weight_decay 1e-4
+mae:0.234
+r2:0.85
