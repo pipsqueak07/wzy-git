@@ -336,4 +336,4 @@ if __name__ == '__main__':
     main(device, model_param, optimizer_param, scheduler_param, dataset_param, dataloader_param,
          options["num_epochs"], options["seed"], options["load_model"], options["pred"],
          options["pre_trained_model_path"], options["TL"], options["pre_model_name"], options['model_name'])
-
+print("test")
