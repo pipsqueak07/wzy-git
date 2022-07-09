@@ -154,7 +154,7 @@ class Model(object):
 
         dataloaders = {'train': train_dl, 'val': val_dl}
         history = History(
-            file_path='E:\github\wzy-git\geo-CGNN-master\geo-CGNN-master\data/history_{}.csv'.format(self.name))
+            file_path='./data/history_{}.csv'.format(self.name))
         checkpoint = Checkpoint(self)
         for epoch in range(num_epochs):
             epoch_since = time.time()
