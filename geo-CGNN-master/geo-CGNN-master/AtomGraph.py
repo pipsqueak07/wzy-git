@@ -110,7 +110,7 @@ def main(data_dir, data_name,output_path,name_database ,cutoff,max_num_nbr,compr
         exit(1)
     #config_path=os.path.join(output_path, 'oqmd_config_onehot.json')
     if name_database=='MP':
-        config_path='./database/mp_config_init.json'
+        config_path='./database/mp_config_onehot.json'
     elif name_database=='OQMD':
         config_path='./database/oqmd_config_onehot.json'
 

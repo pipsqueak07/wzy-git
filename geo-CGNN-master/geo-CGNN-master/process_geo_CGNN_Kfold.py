@@ -35,9 +35,9 @@ from models import Model, geo_CGNN
 from data_utils import AtomGraphDataset, Atomgraph_collate
 
 
-def TransferLearning(model, model_name, n_conv, n_MLP_psi2n=None, n_gated_pooling=None, n_linear_regression=None, conv_TL=True, MLP_psi2n_TL=False, gated_pooling_TL=False, linear_regression_TL=False):
+def TransferLearning(model, pre_model_name, n_conv, n_MLP_psi2n=None, n_gated_pooling=None, n_linear_regression=None, conv_TL=True, MLP_psi2n_TL=False, gated_pooling_TL=False, linear_regression_TL=False):
     path = os.getcwd()
-    PreModel_path = path + '//model//' + model_name
+    PreModel_path = path + '//model//' + pre_model_name
     state_dict = model.model.state_dict().copy()
     PreModel = torch.load(PreModel_path, map_location=lambda storage, loc: storage)
     state_dict_TL = PreModel.copy()
@@ -84,7 +84,7 @@ def use_setpLR(param):
     return ms[0] < 0
 
 
-def create_model(device, model_param, optimizer_param, scheduler_param, load_model):
+def create_model(device, model_param, optimizer_param, scheduler_param, load_model, model_name):
     model = geo_CGNN(**model_param)
     if load_model:  # transfer learning
         for para in model.embedding.parameters():
@@ -126,7 +126,7 @@ def create_model(device, model_param, optimizer_param, scheduler_param, load_mod
     cutoff = model_param.pop('cutoff')
     max_nei = model_param.pop('max_nei')
     name = str(N_block) + '_' + str(cutoff) + '_' + str(max_nei)
-    return Model(device, model, name, optimizer, scheduler, clip_value)
+    return Model(device, model, model_name, name, optimizer, scheduler, clip_value)
 
 
 def K_fold(dataset, seed, cv=5, dataloader_param=None, pin_memory=False):
@@ -162,7 +162,7 @@ def K_fold(dataset, seed, cv=5, dataloader_param=None, pin_memory=False):
 
 
 def main(device, model_param, optimizer_param, scheduler_param, dataset_param, dataloader_param,
-         num_epochs, seed, load_model, pred, pre_trained_model_path, TL, model_name):
+         num_epochs, seed, load_model, pred, pre_trained_model_path, TL, pre_model_name, model_name):
     N_block = model_param['N_block']
     cutoff = model_param['cutoff']
     max_nei = model_param['max_nei']
@@ -193,10 +193,10 @@ def main(device, model_param, optimizer_param, scheduler_param, dataset_param, d
         # Create a DFTGN model
         # recreate a new model
         model_param['n_node_feat'] = dataset.graph_data[0].nodes.shape[1]
-        model = create_model(device, model_param, optimizer_param, scheduler_param, load_model)
+        model = create_model(device, model_param, optimizer_param, scheduler_param, load_model, model_name)
 
         if TL:
-            TransferLearning(model, model_name, n_conv=options['N_block'], conv_TL=True)
+            TransferLearning(model, pre_model_name, n_conv=options['N_block'], conv_TL=True)
 
         if load_model:
             print("Loading weights from mymodel.pth")
@@ -285,7 +285,8 @@ if __name__ == '__main__':
     parser.add_argument("--load_model", action='store_true')
     parser.add_argument("--pred", action='store_true')
     parser.add_argument("--TL", action='store_true')
-    parser.add_argument("--model_name", type=str, default='model_5_8_12.pth')
+    parser.add_argument("--pre_model_name", type=str, default='model_5_8_12.pth')
+    parser.add_argument("--model_name", type=str, default='thermal.pth')
     parser.add_argument("--pre_trained_model_path", type=str, default='./pre_trained/model_Ef_OQMD.pth')
     options = vars(parser.parse_args())
 
@@ -334,4 +335,4 @@ if __name__ == '__main__':
 
     main(device, model_param, optimizer_param, scheduler_param, dataset_param, dataloader_param,
          options["num_epochs"], options["seed"], options["load_model"], options["pred"],
-         options["pre_trained_model_path"], options["TL"], options["model_name"])
+         options["pre_trained_model_path"], options["TL"], options["pre_model_name"], options['model_name'])
