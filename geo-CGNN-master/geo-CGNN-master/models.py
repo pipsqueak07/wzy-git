@@ -106,9 +106,10 @@ class Checkpoint(object):
 
 
 class Model(object):
-    def __init__(self, device, model, name, optimizer, scheduler, clip_value=None,
+    def __init__(self, device, model, name, model_name, optimizer, scheduler, clip_value=None,
                  metrics=[('loss', nn.MSELoss()), ('mae', nn.L1Loss())]):
         self.name = name
+        self.model_name = model_name
         self.model = model.to(device)
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -242,7 +243,7 @@ class Model(object):
         return all_outputs, all_targets, all_graph_vec
 
     def save(self, model_path="model"):
-        model_path = "model/model_{}.pth".format(self.name)
+        model_path = "model/model_{}.pth".format(self.model_name)
         torch.save(self.model.state_dict(), model_path)
 
     def load(self, model_path):

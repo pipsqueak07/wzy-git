@@ -27,11 +27,56 @@ import copy
 import numpy as np
 import pandas as pd
 import random
+from sklearn.metrics import r2_score, mean_absolute_error
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset, SubsetRandomSampler
 from models import Model, geo_CGNN
 from data_utils import AtomGraphDataset, Atomgraph_collate
+
+
+def TransferLearning(model, model_name, n_conv, n_MLP_psi2n=None, n_gated_pooling=None, n_linear_regression=None, conv_TL=True, MLP_psi2n_TL=False, gated_pooling_TL=False, linear_regression_TL=False):
+    path = os.getcwd()
+    PreModel_path = path + '//model//' + model_name
+    state_dict = model.model.state_dict().copy()
+    PreModel = torch.load(PreModel_path, map_location=lambda storage, loc: storage)
+    state_dict_TL = PreModel.copy()
+
+    # Embedding layer
+    state_dict['embedding.linear.weight'] = state_dict_TL['embedding.linear.weight']
+    if conv_TL:
+        for conv in range(n_conv):
+            # in the nodes, for every conv, including linear_gate(), activation_gate(), linear_MLP(), activation_MLP()
+            state_dict['conv.{}.linear_gate.weight'.format(conv)] = state_dict_TL['conv.{}.linear_gate.weight'.format(conv)]
+            state_dict['conv.{}.activation_gate.0.weight'.format(conv)] = state_dict_TL['conv.{}.activation_gate.0.weight'.format(conv)]
+            state_dict['conv.{}.activation_gate.0.bias'.format(conv)] = state_dict_TL['conv.{}.activation_gate.0.bias'.format(conv)]
+            state_dict['conv.{}.linear_MLP.weight'.format(conv)] = state_dict_TL['conv.{}.linear_MLP.weight'.format(conv)]
+            state_dict['conv.{}.activation_MLP.0.weight'.format(conv)] = state_dict_TL['conv.{}.activation_MLP.0.weight'.format(conv)]
+            state_dict['conv.{}.activation_MLP.0.bias'.format(conv)] = state_dict_TL['conv.{}.activation_MLP.0.bias'.format(conv)]
+            # in the combine_set, for every conv, including linear1_vector()
+            state_dict['conv.{}.linear1_vector.weight'.format(conv)] = state_dict_TL['conv.{}.linear1_vector.weight'.format(conv)]
+            #in the plane_wave, for every conv, including linear2_vector_gate(), activation2_vector_gate(), linear2_vector()
+            state_dict['conv.{}.linear2_vector_gate.weight'.format(conv)] = state_dict_TL['conv.{}.linear2_vector_gate.weight'.format(conv)]
+            state_dict['conv.{}.activation2_vector_gate.0.weight'.format(conv)] = state_dict_TL['conv.{}.activation2_vector_gate.0.weight'.format(conv)]
+            state_dict['conv.{}.activation2_vector_gate.0.bias'.format(conv)] = state_dict_TL['conv.{}.activation2_vector_gate.0.bias'.format(conv)]
+            state_dict['conv.{}.linear2_vector.weight'.format(conv)] = state_dict_TL['conv.{}.linear2_vector.weight'.format(conv)]
+        print("-----------")
+        print("conv transfer learning has been finished!")
+        print("-----------")
+    '''
+    if MLP_psi2n_TL:
+        for MLP_psi2n in range(n_MLP_psi2n):
+        
+    if  gated_pooling_TL:
+        for gated_pooling in range(n_gated_pooling):
+            
+    if linear_regression_TL:
+        for linear_regression in range(n_linear_regression):
+    '''
+    model.model.load_state_dict(state_dict)
+    print("model has been matched !")
+
+
 
 
 def use_setpLR(param):
@@ -117,7 +162,7 @@ def K_fold(dataset, seed, cv=5, dataloader_param=None, pin_memory=False):
 
 
 def main(device, model_param, optimizer_param, scheduler_param, dataset_param, dataloader_param,
-         num_epochs, seed, load_model, pred, pre_trained_model_path):
+         num_epochs, seed, load_model, pred, pre_trained_model_path, TL, model_name):
     N_block = model_param['N_block']
     cutoff = model_param['cutoff']
     max_nei = model_param['max_nei']
@@ -150,6 +195,9 @@ def main(device, model_param, optimizer_param, scheduler_param, dataset_param, d
         model_param['n_node_feat'] = dataset.graph_data[0].nodes.shape[1]
         model = create_model(device, model_param, optimizer_param, scheduler_param, load_model)
 
+        if TL:
+            TransferLearning(model, model_name, n_conv=options['N_block'], conv_TL=True)
+
         if load_model:
             print("Loading weights from mymodel.pth")
             model.load(model_path=pre_trained_model_path)
@@ -159,6 +207,9 @@ def main(device, model_param, optimizer_param, scheduler_param, dataset_param, d
             # Train
             train_dl = train_data[cv]
             val_dl = test_data[cv]
+            test_dl = test_data[cv]
+            split_dl = split_data[cv]
+            print(split_dl)
             trainD = [n for n in train_dl]
 
             print('start training')
@@ -169,18 +220,27 @@ def main(device, model_param, optimizer_param, scheduler_param, dataset_param, d
 
         # Test
 
-        test_dl = test_data[cv]
         outputs, targets, all_graph_vec = model.evaluate(test_dl)
         names = [dataset.graph_names[i] for i in split_data[cv]["test"]]
         df_predictions = pd.DataFrame({"name": names, "prediction": outputs, "target": targets})
         all_graph_vec = pd.DataFrame(all_graph_vec)
         all_graph_vec['name'] = names
-        df_predictions.to_csv("data/test_predictions_{}.csv".format(name), index=False, mode='a')
+        df_predictions.to_csv("data/test_predictions_{}.csv".format(name), index=False, mode='a', header=None)
         all_graph_vec.to_csv("data/all_graph_vec_{}.csv".format(name), index=False, mode='a')
         print("\nfold {} END".format(cv))
         model_param = {k: options[k] for k in model_param_names if options[k] is not None}
         optimizer_param = {k: options[k] for k in optimizer_param_names if options[k] is not None}
+        if optimizer_param["clip_value"] == 0.0:
+            optimizer_param["clip_value"] = None
         scheduler_param = {k: options[k] for k in scheduler_param_names if options[k] is not None}
+        del model
+    file = pd.read_csv("data/test_predictions_{}.csv".format(name), header=None)
+    predictons = file[1]
+    sorce_targets = file[2]
+    mae = mean_absolute_error(sorce_targets, predictons)
+    r2 = r2_score(sorce_targets, predictons)
+    print("^^^^mae: ", mae)
+    print("^^^^r2: ", r2)
     print("\nEND")
 
 
@@ -224,6 +284,8 @@ if __name__ == '__main__':
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument("--load_model", action='store_true')
     parser.add_argument("--pred", action='store_true')
+    parser.add_argument("--TL", action='store_true')
+    parser.add_argument("--model_name", type=str, default='model_5_8_12.pth')
     parser.add_argument("--pre_trained_model_path", type=str, default='./pre_trained/model_Ef_OQMD.pth')
     options = vars(parser.parse_args())
 
@@ -272,4 +334,4 @@ if __name__ == '__main__':
 
     main(device, model_param, optimizer_param, scheduler_param, dataset_param, dataloader_param,
          options["num_epochs"], options["seed"], options["load_model"], options["pred"],
-         options["pre_trained_model_path"])
+         options["pre_trained_model_path"], options["TL"], options["model_name"])
